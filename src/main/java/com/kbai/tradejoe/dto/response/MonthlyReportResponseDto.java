@@ -1,5 +1,6 @@
 package com.kbai.tradejoe.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.kbai.tradejoe.domain.MonthlyAnalysis;
 import com.kbai.tradejoe.domain.MonthlyReport;
 
@@ -9,6 +10,7 @@ import java.util.List;
 
 public record MonthlyReportResponseDto(
         Long reportId,
+        @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate period,
         String summary,
         List<MonthlyAnalysisDto> analyses
@@ -24,22 +26,16 @@ public record MonthlyReportResponseDto(
 
     public record MonthlyAnalysisDto(
             Long id,
-            LocalDateTime dateTime,
             String analysisDetails,
             String suggestion,
-            Long stockItemId,
-            String stockName,
-            String symbol
+            String stockName
     ) {
         public static MonthlyAnalysisDto from(MonthlyAnalysis e) {
             return new MonthlyAnalysisDto(
                     e.getId(),
-                    e.getDateTime(),
                     e.getAnalysisDetails(),
                     e.getSuggestion(),
-                    e.getStockItem().getId(),
-                    e.getStockItem().getName(),
-                    e.getStockItem().getSymbol()
+                    e.getStockItem().getName()
             );
         }
     }

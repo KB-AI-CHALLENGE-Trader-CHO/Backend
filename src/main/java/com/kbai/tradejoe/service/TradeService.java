@@ -29,6 +29,7 @@ public class TradeService {
         TradeHistory tradeHistory = requestDto.toEntity();
         StockItem stockItem = stockItemRepository.findById(requestDto.stockItemId())
                 .orElseThrow(() -> new CommonException(ErrorCode.NOT_FOUND_RESOURCE));
+        tradeHistory.addStockItem(stockItem);
         tradeHistoryRepository.save(tradeHistory);
 
         return true;

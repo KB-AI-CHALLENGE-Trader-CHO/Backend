@@ -1,5 +1,6 @@
 package com.kbai.tradejoe.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.kbai.tradejoe.domain.TradeHistory;
 import com.kbai.tradejoe.domain.type.TradeType;
 
@@ -8,7 +9,9 @@ import java.time.LocalTime;
 
 public record TradeResponseDto(
         Long id,
+        @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate date,
+        @JsonFormat(pattern = "HH:mm")
         LocalTime time,
         String name,
         String symbol,
@@ -18,7 +21,6 @@ public record TradeResponseDto(
         Double avgBuyPrice,
         String memo
 ) {
-    // TODO: EntityGraph
     public static TradeResponseDto fromEntity(TradeHistory entity) {
         return new TradeResponseDto(
                 entity.getId(),

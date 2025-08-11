@@ -1,10 +1,7 @@
 package com.kbai.tradejoe.domain;
 
-import com.kbai.tradejoe.domain.type.TradeType;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -16,9 +13,6 @@ public class WeeklyAnalysis {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "date_time", nullable = false)
-    private LocalDateTime dateTime;
 
     @Lob
     @Column(name = "analysis_details")
@@ -36,8 +30,7 @@ public class WeeklyAnalysis {
     private TradeHistory tradeHistory;
 
     @Builder
-    public WeeklyAnalysis(LocalDateTime dateTime, TradeHistory tradeHistory, String analysisDetails, String suggestion, WeeklyReport weeklyReport) {
-        this.dateTime = dateTime;
+    public WeeklyAnalysis(TradeHistory tradeHistory, String analysisDetails, String suggestion, WeeklyReport weeklyReport) {
         this.tradeHistory = tradeHistory;
         this.analysisDetails = analysisDetails;
         this.suggestion = suggestion;

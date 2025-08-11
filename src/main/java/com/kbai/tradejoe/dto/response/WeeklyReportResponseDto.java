@@ -1,15 +1,18 @@
 // DTO: 주간 리포트 + 분석 목록
 package com.kbai.tradejoe.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.kbai.tradejoe.domain.WeeklyAnalysis;
 import com.kbai.tradejoe.domain.WeeklyReport;
+import com.kbai.tradejoe.domain.type.TradeType;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 public record WeeklyReportResponseDto(
         Long reportId,
+        @JsonFormat(pattern = "yyyy-MM-dd")
         LocalDate period,
         String summary,
         List<WeeklyAnalysisDto> analyses
@@ -25,18 +28,26 @@ public record WeeklyReportResponseDto(
 
     public record WeeklyAnalysisDto(
             Long id,
-            LocalDateTime dateTime,
+            @JsonFormat(pattern = "yyyy-MM-dd")
+            LocalDate date,
+            @JsonFormat(pattern = "HH:mm")
+            LocalTime time,
             String analysisDetails,
             String suggestion,
-            Long tradeHistoryId
+            String memo,
+            String stockName,
+            TradeType tradeType
     ) {
         public static WeeklyAnalysisDto from(WeeklyAnalysis e) {
             return new WeeklyAnalysisDto(
                     e.getId(),
-                    e.getDateTime(),
+                    e.getTradeHistory().getDate(),
+                    e.getTradeHistory().getTime(),
                     e.getAnalysisDetails(),
                     e.getSuggestion(),
-                    e.getTradeHistory().getId()
+                    e.getTradeHistory().getMemo(),
+                    e.getTradeHistory().getStockItem().getName(),
+                    e.getTradeHistory().getTradeType()
             );
         }
     }

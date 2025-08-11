@@ -7,6 +7,8 @@ import com.kbai.tradejoe.domain.WeeklyAnalysis;
 import com.kbai.tradejoe.domain.WeeklyReport;
 import com.kbai.tradejoe.dto.response.MonthlyReportResponseDto;
 import com.kbai.tradejoe.dto.response.WeeklyReportResponseDto;
+import com.kbai.tradejoe.exception.CommonException;
+import com.kbai.tradejoe.exception.ErrorCode;
 import com.kbai.tradejoe.repository.MonthlyAnalysisRepository;
 import com.kbai.tradejoe.repository.MonthlyReportRepository;
 import com.kbai.tradejoe.repository.WeeklyAnalysisRepository;
@@ -39,7 +41,7 @@ public class ReportService {
 
         WeeklyReport report = weeklyReportRepository
                 .findFirstByPeriodBetween(weekStart, weekEnd)
-                .orElseThrow(() -> new IllegalStateException("이번 주 WeeklyReport가 존재하지 않습니다."));
+                .orElseThrow(() -> new CommonException(ErrorCode.NOT_FOUND_RESOURCE));
 
         List<WeeklyAnalysis> analyseList = weeklyAnalysisRepository.findAllByWeeklyReportId(report.getId());
 
@@ -53,7 +55,7 @@ public class ReportService {
 
         MonthlyReport report = monthlyReportRepository
                 .findFirstByPeriodBetween(monthStart, monthEnd)
-                .orElseThrow(() -> new IllegalStateException("이번 달 MonthlyReport가 존재하지 않습니다."));
+                .orElseThrow(() -> new CommonException(ErrorCode.NOT_FOUND_RESOURCE));
 
         List<MonthlyAnalysis> analyseList = monthlyAnalysisRepository.findAllByMonthlyReportId(report.getId());
 
