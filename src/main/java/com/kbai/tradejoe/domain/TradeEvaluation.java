@@ -4,7 +4,7 @@ package com.kbai.tradejoe.domain;
 import com.kbai.tradejoe.domain.embed.DailyContext;
 import com.kbai.tradejoe.domain.embed.IntradayTiming;
 import com.kbai.tradejoe.domain.embed.ScoreMetrics;
-import com.kbai.tradejoe.domain.type.*;
+
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
