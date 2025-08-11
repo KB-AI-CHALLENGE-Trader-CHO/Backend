@@ -1,11 +1,13 @@
 package com.kbai.tradejoe.domain;
 
 import com.kbai.tradejoe.domain.type.TradeType;
+import com.kbai.tradejoe.dto.request.TradeRequestDto;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -14,6 +16,7 @@ import java.time.LocalTime;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
+@DynamicUpdate
 @Table(name = "trade_history")
 public class TradeHistory {
 
@@ -26,12 +29,6 @@ public class TradeHistory {
 
     @Column(name = "trade_time", nullable = false)
     private LocalTime time;
-
-    @Column(nullable = false)
-    private String name;
-
-    @Column(nullable = false)
-    private String symbol;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -49,16 +46,33 @@ public class TradeHistory {
     @Column(name = "memo")
     private String memo;
 
+    @ManyToOne(fetch = FetchType.LAZY) // N:1 관계
+    @JoinColumn(name = "stock_item_id", nullable = false)
+    private StockItem stockItem;
+
     @Builder
-    public TradeHistory(LocalDate date, LocalTime time, String name, String symbol, TradeType tradeType, Double quantity, Double price, Double avgBuyPrice, String memo) {
+    public TradeHistory(LocalDate date, LocalTime time, StockItem stockItem, TradeType tradeType, Double quantity, Double price, Double avgBuyPrice, String memo) {
         this.date = date;
         this.time = time;
-        this.name = name;
-        this.symbol = symbol;
+        this.stockItem = stockItem;
         this.tradeType = tradeType;
         this.quantity = quantity;
         this.price = price;
         this.avgBuyPrice = avgBuyPrice;
         this.memo = memo;
+    }
+
+    public void addStockItem(StockItem stockItem) {
+        this.stockItem = stockItem;
+    }
+
+    public void updateTradeDetails(TradeRequestDto entity) {
+        this.date = entity.date();
+        this.time = entity.time();
+        this.tradeType = entity.type();
+        this.quantity = entity.quantity();
+        this.price = entity.price();
+        this.avgBuyPrice = entity.avgBuyPrice();
+        this.memo = entity.memo();
     }
 }
