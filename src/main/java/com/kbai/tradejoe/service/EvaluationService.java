@@ -26,7 +26,7 @@ public class EvaluationService {
     private static final LocalTime TRADE_END = LocalTime.of(3, 0);
 
     @Transactional
-    public void evaluateAndSave(TradeHistory trade) { // 비교 완료
+    public TradeEvaluation evaluateAndSave(TradeHistory trade) { // 비교 완료
         LocalDateTime startDate = computeStartDateTime(trade.getDate(), trade.getTime());
 
         List<DailyMarketData> daily = dailyRepo
@@ -47,7 +47,7 @@ public class EvaluationService {
                 .score(scores)
                 .build();
 
-        evalRepo.save(newTradeEval);
+        return evalRepo.save(newTradeEval);
     }
 
     private DailyContext analyzeDailyContext(List<DailyMarketData> daily) { // 확인

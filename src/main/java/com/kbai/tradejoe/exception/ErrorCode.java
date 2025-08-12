@@ -55,6 +55,7 @@ public enum ErrorCode {
     PROJECT_NOT_AVAILABLE(50002, HttpStatus.INTERNAL_SERVER_ERROR, "해당 프로젝트는 현재 참여할 수 없습니다."),
     ILLEGAL_STATE(50003, HttpStatus.INTERNAL_SERVER_ERROR, "잘못된 상태입니다."),
     RUNTIME_EXCEPTION(50004, HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류입니다."),
+    JSON_PROCESSING_ERROR(50005, HttpStatus.INTERNAL_SERVER_ERROR, "데이터 처리(JSON 변환) 중 오류가 발생했습니다."),
     EXTERNAL_API_ERROR(50300, HttpStatus.SERVICE_UNAVAILABLE, "외부 API 요청에 실패하였습니다.");
 
 
