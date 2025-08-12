@@ -5,10 +5,14 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface TradeHistoryRepository extends JpaRepository<TradeHistory, Long> {
 
     @Override
     @EntityGraph(attributePaths = {"stockItem"})
     List<TradeHistory> findAll();
+
+    @EntityGraph(attributePaths = {"stockItem"})
+    Optional<TradeHistory> findById(Long id);
 }

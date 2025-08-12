@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TradeService {
 
+    private final EvaluationService evaluationService;
     private final TradeHistoryRepository tradeHistoryRepository;
     private final StockItemRepository stockItemRepository;
 
@@ -32,11 +33,12 @@ public class TradeService {
         tradeHistory.addStockItem(stockItem);
         tradeHistoryRepository.save(tradeHistory);
 
+        evaluationService.evaluateAndSave(tradeHistory);
+
         return true;
     }
 
     public Map<LocalDate, List<TradeResponseDto>> getTradeList() {
-        List<TradeResponseDto> tradeHistoryList = tradeHistoryRepository.findAll().stream().map(TradeResponseDto::fromEntity).toList();
 
         return tradeHistoryRepository.findAll().stream()
                 .map(TradeResponseDto::fromEntity)

@@ -7,6 +7,7 @@ import com.kbai.tradejoe.domain.embed.ScoreMetrics;
 import com.kbai.tradejoe.domain.type.*;
 import com.kbai.tradejoe.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,25 +18,25 @@ import java.util.*;
 @RequiredArgsConstructor
 public class EvaluationService {
 
-    private final TradeHistoryRepository tradeHistoryRepository;
     private final DailyMarketDataRepository dailyRepo;
     private final IntradayMarketDataRepository intraRepo;
     private final TradeEvaluationRepository evalRepo;
 
-    @Transactional
-    public void evaluateAndSave(Long tradeId) {
-        TradeHistory trade = tradeHistoryRepository.findById(tradeId)
-                .orElseThrow(() -> new IllegalArgumentException("Trade not found: " + tradeId));
+    private static final LocalTime TRADE_START = LocalTime.of(20, 30);
+    private static final LocalTime TRADE_END = LocalTime.of(3, 0);
 
-        Long stockItemId = trade.getStockItem().getId();
-        LocalDate tradeDate = trade.getDate();
+    @Transactional
+    public void evaluateAndSave(TradeHistory trade) { // 비교 완료
+        LocalDateTime startDate = computeStartDateTime(trade.getDate(), trade.getTime());
 
         List<DailyMarketData> daily = dailyRepo
-                .findByStockItem_IdAndDateLessThanEqualOrderByDateAsc(stockItemId, tradeDate);
-        List<IntradayMarketData> intra = intraRepo
-                .findByStockItem_IdAndDateOrderByIdAsc(stockItemId, tradeDate);
+                .findRecent100(trade.getStockItem(), trade.getDate(), PageRequest.of(0, 100));
+        daily.sort((a, b) -> a.getDate().compareTo(b.getDate()));
 
-        DailyContext dailyContext = analyzeDailyContext(daily, tradeDate);
+        List<IntradayMarketData> intra = intraRepo
+                .findInRange(trade.getStockItem(), startDate, LocalDateTime.of(trade.getDate(), trade.getTime()));
+
+        DailyContext dailyContext = analyzeDailyContext(daily);
         IntradayTiming intradayTiming = analyzeIntradayTiming(intra);
         ScoreMetrics scores = calculateScores(dailyContext, intradayTiming);
 
@@ -49,7 +50,7 @@ public class EvaluationService {
         evalRepo.save(newTradeEval);
     }
 
-    private DailyContext analyzeDailyContext(List<DailyMarketData> daily, LocalDate tradeDate) {
+    private DailyContext analyzeDailyContext(List<DailyMarketData> daily) { // 확인
         if (daily == null || daily.isEmpty()) return DailyContext.builder().build();
 
         DailyMarketData latest = daily.getLast();
@@ -81,15 +82,15 @@ public class EvaluationService {
     }
 
 
-    private IntradayTiming analyzeIntradayTiming(List<IntradayMarketData> intra) {
+    private IntradayTiming analyzeIntradayTiming(List<IntradayMarketData> intra) { // 확인 완
         if (intra == null || intra.isEmpty()) return IntradayTiming.builder().build();
 
         IntradayMarketData latest = intra.getLast();
 
-        MsTrend msTrend = simpleMa20v50(
+        MsTrend msTrend = simpleMa12v20(
                 latest.getClose(),
-                latest.getMa20d(),
-                latest.getMa50d()
+                latest.getMa12p(), //12
+                latest.getMa20p() // 20
         );
 
         Double volZ = volumeZscore(intra.stream().map(IntradayMarketData::getVolume).toList());
@@ -97,8 +98,8 @@ public class EvaluationService {
         return IntradayTiming.builder()
                 .trend(msTrend.trend())
                 .maStack(msTrend.maStack())
-                .rsi(latest.getRsi14d())
-                .rsiStatus(rsiFlag(latest.getRsi14d()))
+                .rsi(latest.getRsi14p())
+                .rsiStatus(rsiFlag(latest.getRsi14p()))
                 .stochK(latest.getStochasticK())
                 .stochStatus(stochFlag(latest.getStochasticK()))
                 .bbEvent(bandEvent(latest.getClose(), latest.getBollingerUpper(), latest.getBollingerLower()))
@@ -136,6 +137,8 @@ public class EvaluationService {
                 .build();
     }
 
+    /* =====================  계산 메소드 ===================== */
+
     private record MsTrend(MaStack maStack, Trend trend) {}
 
     private static MsTrend maStack(Double c, Double m20, Double m50, Double m100) {
@@ -145,10 +148,10 @@ public class EvaluationService {
         return new MsTrend(MaStack.mixed, Trend.sideways);
     }
 
-    private static MsTrend simpleMa20v50(Double c, Double m20, Double m50) {
-        if (anyNull(c, m20, m50)) return new MsTrend(MaStack.mixed, Trend.sideways);
-        if (c > m20 && m20 > m50) return new MsTrend(MaStack.bullish, Trend.uptrend);
-        if (c < m20 && m20 < m50) return new MsTrend(MaStack.bearish, Trend.downtrend);
+    private static MsTrend simpleMa12v20(Double c, Double m12, Double m20) {
+        if (anyNull(c, m12, m20)) return new MsTrend(MaStack.mixed, Trend.sideways);
+        if (c > m12 && m12 > m20) return new MsTrend(MaStack.bullish, Trend.uptrend);
+        if (c < m12 && m12 < m20) return new MsTrend(MaStack.bearish, Trend.downtrend);
         return new MsTrend(MaStack.mixed, Trend.sideways);
     }
 
@@ -186,7 +189,7 @@ public class EvaluationService {
         return AtrRegime.mid;
     }
 
-    private static double percentile(List<Double> sorted, int p) {
+    private static double percentile(List<Double> sorted, int p) { // 수정해야될듯
         if (sorted.isEmpty()) return Double.NaN;
         double rank = (p / 100.0) * (sorted.size() - 1);
         int lo = (int) Math.floor(rank);
@@ -222,27 +225,26 @@ public class EvaluationService {
         return ObvSignal.none;
     }
 
-    /* ===================== 보조 유틸 ===================== */
+    private static LocalDateTime computeStartDateTime(LocalDate d,  LocalTime t) {
+        DayOfWeek dow = d.getDayOfWeek();
 
-    private static boolean anyNull(Object... xs) {
-        for (Object x : xs) if (x == null) return true;
-        return false;
-    }
+        LocalDateTime from;
 
-    private static List<Integer> pivotsHigh(List<DailyMarketData> d, int k) {
-        List<Integer> r = new ArrayList<>();
-        for (int i = k; i < d.size() - k; i++) {
-            Double v = d.get(i).getHigh();
-            if (v == null) continue;
-            boolean isMax = true;
-            for (int j = i - k; j <= i + k; j++) {
-                if (j == i) continue;
-                Double w = d.get(j).getHigh();
-                if (w != null && w >= v) { isMax = false; break; }
-            }
-            if (isMax) r.add(i);
+        if (dow == DayOfWeek.MONDAY) { // 성진 주석보고 확인할 것
+            // 월 20:30~23:59 -> 금요일 20:30부터
+            from = LocalDateTime.of(d.minusDays(3), TRADE_START);
+        } else if (dow == DayOfWeek.TUESDAY && t.isBefore(TRADE_END)) {
+            // 화 00:00~3:00 -> 금요일 20:30부터
+            from = LocalDateTime.of(d.minusDays(4), TRADE_START);
+        } else if (t.equals(TRADE_START) || t.isAfter(TRADE_START)) {
+            // 평일 20:30~23:59 -> 전날 20:30부터
+            from = LocalDateTime.of(d.minusDays(1), TRADE_START);
+        } else {
+            // 평일 00:00~03:00 -> 이틀 전 20:30부터
+            from = LocalDateTime.of(d.minusDays(2), TRADE_START);
         }
-        return r;
+
+        return from;
     }
 
     private static List<Integer> pivotsLow(List<DailyMarketData> d, int k) {
@@ -254,9 +256,25 @@ public class EvaluationService {
             for (int j = i - k; j <= i + k; j++) {
                 if (j == i) continue;
                 Double w = d.get(j).getLow();
-                if (w != null && w <= v) { isMin = false; break; }
+                if (w != null && w < v) { isMin = false; break; } // = 은 뺌
             }
             if (isMin) r.add(i);
+        }
+        return r;
+    }
+
+    private static List<Integer> pivotsHigh(List<DailyMarketData> d, int k) {
+        List<Integer> r = new ArrayList<>();
+        for (int i = k; i < d.size() - k; i++) {
+            Double v = d.get(i).getHigh();
+            if (v == null) continue;
+            boolean isMax = true;
+            for (int j = i - k; j <= i + k; j++) {
+                if (j == i) continue;
+                Double w = d.get(j).getHigh();
+                if (w != null && w > v) { isMax = false; break; } // = 은 뺌
+            }
+            if (isMax) r.add(i);
         }
         return r;
     }
@@ -272,4 +290,12 @@ public class EvaluationService {
         if (sd == 0 || Double.isNaN(sd)) return 0.0;
         return (last - mean) / sd;
     }
+
+    /* ===================== 보조 유틸 ===================== */
+
+    private static boolean anyNull(Object... xs) {
+        for (Object x : xs) if (x == null) return true;
+        return false;
+    }
+
 }

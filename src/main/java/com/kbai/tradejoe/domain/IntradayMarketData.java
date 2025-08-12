@@ -39,17 +39,14 @@ public class IntradayMarketData {
     @Column(name = "volume")
     private Long volume;
 
-    @Column(name = "ma_20d")
-    private Double ma20d;
+    @Column(name = "ma_20_period")
+    private Double ma20p;
 
-    @Column(name = "ma_50d")
-    private Double ma50d;
+    @Column(name = "ma_12_period")
+    private Double ma12p;
 
-    @Column(name = "ma_100d")
-    private Double ma100d;
-
-    @Column(name = "rsi_14d")
-    private Double rsi14d;
+    @Column(name = "rsi_14_period")
+    private Double rsi14p;
 
     @Column(name = "bollinger_mid")
     private Double bollingerMid;
