@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("api/trade")
+@RequestMapping("/api/trades")
 @RequiredArgsConstructor
 public class TradeController {
 
