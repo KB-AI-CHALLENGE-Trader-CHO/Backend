@@ -1,4 +1,3 @@
-// Service 구현
 package com.kbai.tradejoe.service;
 
 import com.kbai.tradejoe.domain.MonthlyAnalysis;
@@ -27,8 +26,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ReportService {
 
-    // TODO: 주간, 월간 목록 가져오기
-    // TODO: 해당 주차 주간 월간 가져오기
     private final WeeklyAnalysisRepository weeklyAnalysisRepository;
     private final WeeklyReportRepository weeklyReportRepository;
     private final MonthlyAnalysisRepository monthlyAnalysisRepository;
