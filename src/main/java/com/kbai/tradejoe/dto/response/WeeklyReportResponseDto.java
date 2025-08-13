@@ -33,14 +33,12 @@ public record WeeklyReportResponseDto(
             LocalDate date,
             @JsonFormat(pattern = "HH:mm")
             LocalTime time,
-            // [수정] String -> AnalysisDetailsDto 객체 타입으로 변경
             AnalysisDetailsResponseDto analysisDetails,
             String suggestion,
             String memo,
             String stockName,
             TradeType tradeType
     ) {
-        //from 메소드가 AnalysisDetailsDto를 인자로 받도록 변경
         public static WeeklyAnalysisDto from(WeeklyAnalysis e, AnalysisDetailsResponseDto detailsDto) {
             return new WeeklyAnalysisDto(
                     e.getId(),

@@ -124,6 +124,8 @@ public class ReportService {
         return MonthlyReportResponseDto.of(report.getLast(), analyseList);
     }
 
+
+    // TODO: AOP 형식으로 수정, Exception 처리
     private WeeklyReportResponseDto.WeeklyAnalysisDto convertWeeklyAnalysisToDto(WeeklyAnalysis analysis) {
         try {
             // DB에서 가져온 JSON 문자열을 AnalysisDetailsDto 객체로 파싱

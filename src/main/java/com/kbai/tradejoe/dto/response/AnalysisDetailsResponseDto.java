@@ -3,6 +3,7 @@ package com.kbai.tradejoe.dto.response;
 import com.kbai.tradejoe.domain.TradeEvaluation;
 import com.kbai.tradejoe.domain.embed.DailyContext;
 import com.kbai.tradejoe.domain.embed.IntradayTiming;
+import com.kbai.tradejoe.domain.type.*;
 
 public record AnalysisDetailsResponseDto(
         DailyAnalysis dailyContext,
@@ -14,56 +15,57 @@ public record AnalysisDetailsResponseDto(
                 IntradayAnalysis.from(evaluation)
         );
     }
-}
 
-// 일봉 분석 데이터
-record DailyAnalysis(
-        String trend,
-        String maStack,
-        IndicatorDetail rsi,
-        IndicatorDetail stochastic,
-        String bollingerEvent,
-        String obvSignal,
-        String atrRegime,
-        String keltnerEvent
-) {
-    static DailyAnalysis from(TradeEvaluation evaluation) {
-        DailyContext daily = evaluation.getDaily();
-        return new DailyAnalysis(
-                daily.getTrend().name(),
-                daily.getMaStack().name(),
-                new IndicatorDetail(daily.getRsi(), daily.getRsiStatus().name()), // [수정] 제네릭 제거
-                new IndicatorDetail(daily.getStochK(), daily.getStochStatus().name()), // [수정] 제네릭 제거
-                daily.getBbEvent().name(),
-                daily.getObvSignal().name(),
-                daily.getAtrRegime().name(),
-                daily.getKeltnerEvent().name()
-        );
+    // 일봉 분석 데이터
+    record DailyAnalysis(
+            Trend trend,
+            MaStack maStack,
+            IndicatorDetail rsi,
+            IndicatorDetail stochastic,
+            BandEvent bollingerEvent,
+            ObvSignal obvSignal,
+            AtrRegime atrRegime,
+            BandEvent keltnerEvent
+    ) {
+        static DailyAnalysis from(TradeEvaluation evaluation) {
+            DailyContext daily = evaluation.getDaily();
+            return new DailyAnalysis(
+                    daily.getTrend(),
+                    daily.getMaStack(),
+                    new IndicatorDetail(daily.getRsi(), daily.getRsiStatus()),
+                    new IndicatorDetail(daily.getStochK(), daily.getStochStatus()),
+                    daily.getBbEvent(),
+                    daily.getObvSignal(),
+                    daily.getAtrRegime(),
+                    daily.getKeltnerEvent()
+            );
+        }
     }
-}
 
-// 분봉 분석 데이터
-record IntradayAnalysis(
-        String trend,
-        String maStack,
-        IndicatorDetail rsi,
-        IndicatorDetail stochastic,
-        String bollingerEvent,
-        Double volumeZScore,
-        String keltnerEvent
-) {
-    static IntradayAnalysis from(TradeEvaluation evaluation) {
-        IntradayTiming intra = evaluation.getIntra();
-        return new IntradayAnalysis(
-                intra.getTrend().name(),
-                intra.getMaStack().name(),
-                new IndicatorDetail(intra.getRsi(), intra.getRsiStatus().name()),
-                new IndicatorDetail(intra.getStochK(), intra.getStochStatus().name()),
-                intra.getBbEvent().name(),
-                intra.getVolumeZ(),
-                intra.getKeltnerEvent().name()
-        );
+    // 분봉 분석 데이터
+    record IntradayAnalysis(
+            Trend trend,
+            MaStack maStack,
+            IndicatorDetail rsi,
+            IndicatorDetail stochastic,
+            BandEvent bollingerEvent,
+            Double volumeZScore,
+            BandEvent keltnerEvent
+    ) {
+        static IntradayAnalysis from(TradeEvaluation evaluation) {
+            IntradayTiming intra = evaluation.getIntra();
+            return new IntradayAnalysis(
+                    intra.getTrend(),
+                    intra.getMaStack(),
+                    new IndicatorDetail(intra.getRsi(), intra.getRsiStatus()),
+                    new IndicatorDetail(intra.getStochK(), intra.getStochStatus()),
+                    intra.getBbEvent(),
+                    intra.getVolumeZ(),
+                    intra.getKeltnerEvent()
+            );
+        }
     }
+
+    record IndicatorDetail(Double value, Status status) {}
 }
 
-record IndicatorDetail(Double value, String status) {}
