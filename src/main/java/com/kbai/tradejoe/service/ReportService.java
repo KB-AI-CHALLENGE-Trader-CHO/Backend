@@ -6,6 +6,7 @@ import com.kbai.tradejoe.domain.MonthlyAnalysis;
 import com.kbai.tradejoe.domain.MonthlyReport;
 import com.kbai.tradejoe.domain.WeeklyAnalysis;
 import com.kbai.tradejoe.domain.WeeklyReport;
+import com.kbai.tradejoe.domain.type.TradeType;
 import com.kbai.tradejoe.dto.response.AnalysisDetailsResponseDto;
 import com.kbai.tradejoe.dto.response.MonthlyReportResponseDto;
 import com.kbai.tradejoe.dto.response.ReportOrderDto;
@@ -100,6 +101,8 @@ public class ReportService {
 
         if (report == null || report.isEmpty()) return null;
 
+        log.info("report id : " + report.getLast().getId());
+
         List<WeeklyAnalysis> analyseList = weeklyAnalysisRepository.findAllByWeeklyReportId(report.getLast().getId());
 
         // [추가] 분석 목록을 최종 DTO 리스트로 변환하는 로직
@@ -128,13 +131,22 @@ public class ReportService {
     // TODO: AOP 형식으로 수정, Exception 처리
     private WeeklyReportResponseDto.WeeklyAnalysisDto convertWeeklyAnalysisToDto(WeeklyAnalysis analysis) {
         try {
-            // DB에서 가져온 JSON 문자열을 AnalysisDetailsDto 객체로 파싱
-            AnalysisDetailsResponseDto detailsDto = objectMapper.readValue(analysis.getAnalysisDetails(), AnalysisDetailsResponseDto.class);
-            // 수정된 from 메소드를 사용하여 최종 DTO 생성
-            return WeeklyReportResponseDto.WeeklyAnalysisDto.from(analysis, detailsDto);
+            AnalysisDetailsResponseDto base = objectMapper.readValue(
+                    analysis.getAnalysisDetails(),
+                    AnalysisDetailsResponseDto.class
+            );
+
+            // 2) tradeType 획득
+            TradeType tradeType = analysis.getTradeHistory().getTradeType();
+
+            // 3) tradeType을 반영해 signal 주입
+            AnalysisDetailsResponseDto enriched = AnalysisDetailsResponseDto.withSignals(base, tradeType);
+
+            // 4) 최종 DTO 반환
+            return WeeklyReportResponseDto.WeeklyAnalysisDto.from(analysis, enriched);
+
         } catch (JsonProcessingException e) {
             log.error("Failed to parse analysis_details for weekly_analysis_id: {}", analysis.getId(), e);
-            // 파싱 실패 시, details는 null로 보내는 등 예외 처리
             return WeeklyReportResponseDto.WeeklyAnalysisDto.from(analysis, null);
         }
     }
