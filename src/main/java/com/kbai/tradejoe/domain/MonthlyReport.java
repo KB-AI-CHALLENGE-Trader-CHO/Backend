@@ -22,7 +22,7 @@ public class MonthlyReport {
     @Column(nullable = false)
     private LocalDate period;
 
-    @Column(length = 500)
+    @Column(name = "summary", columnDefinition = "LONGTEXT")
     private String summary;
 
     @Builder

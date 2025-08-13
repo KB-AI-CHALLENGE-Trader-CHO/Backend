@@ -47,6 +47,8 @@ dependencies {
 	/** Development tools **/
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
 	/** Test **/
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

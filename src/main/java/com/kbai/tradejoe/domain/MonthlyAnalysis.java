@@ -23,7 +23,7 @@ public class MonthlyAnalysis {
     private LocalDateTime dateTime;
 
     @Lob
-    @Column(name = "analysis_details")
+    @Column(name = "analysis_details", columnDefinition = "LONGTEXT")
     private String analysisDetails;
 
     @Lob

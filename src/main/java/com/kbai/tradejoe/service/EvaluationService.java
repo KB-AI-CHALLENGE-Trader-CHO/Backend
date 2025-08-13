@@ -1,5 +1,6 @@
 package com.kbai.tradejoe.service;
 
+import com.kbai.tradejoe.config.ScoringProperties;
 import com.kbai.tradejoe.domain.*;
 import com.kbai.tradejoe.domain.embed.DailyContext;
 import com.kbai.tradejoe.domain.embed.IntradayTiming;
@@ -21,6 +22,7 @@ public class EvaluationService {
     private final DailyMarketDataRepository dailyRepo;
     private final IntradayMarketDataRepository intraRepo;
     private final TradeEvaluationRepository evalRepo;
+    private final ScoringProperties scoringProperties;
 
     private static final LocalTime TRADE_START = LocalTime.of(20, 30);
     private static final LocalTime TRADE_END = LocalTime.of(3, 0);
@@ -38,7 +40,7 @@ public class EvaluationService {
 
         DailyContext dailyContext = analyzeDailyContext(daily);
         IntradayTiming intradayTiming = analyzeIntradayTiming(intra);
-        ScoreMetrics scores = calculateScores(dailyContext, intradayTiming);
+        ScoreMetrics scores = calculateScores(dailyContext, intradayTiming, trade.getTradeType());
 
         TradeEvaluation newTradeEval = TradeEvaluation.builder()
                 .tradeHistory(trade)
@@ -108,23 +110,71 @@ public class EvaluationService {
                 .build();
     }
 
+    private ScoreMetrics calculateScores(DailyContext daily, IntradayTiming intra, TradeType tradeType) {
+        // 1. 활성화된 가중치 조합(Rubric)을 yml 설정에서 가져오기
+        String activeRubricName = scoringProperties.activeRubric();
+        ScoringProperties.Weights weights = scoringProperties.rubrics().get(activeRubricName);
 
-    private ScoreMetrics calculateScores(DailyContext daily, IntradayTiming intra) {
+        if (weights == null) {
+            // 활성화된 루브릭이 yml에 정의되지 않은 경우 에러 발생
+            throw new IllegalStateException("Active scoring rubric '" + activeRubricName + "' not found in configuration.");
+        }
+
+        // Optional.ofNullable().orElse(0) 패턴으로 yml에 없는 가중치는 0으로 안전하게 처리
+        ScoringProperties.Context ctxW = weights.context();
+        ScoringProperties.Timing timW = weights.timing();
+
         Integer context = 0;
-        if (daily != null) {
-            if (daily.getMaStack() == MaStack.bullish) context += 12;
-            if (daily.getRsiStatus() == Status.normal) context += 8;
-            if (daily.getObvSignal() == ObvSignal.bullish) context += 6;
-        }
         Integer timing = 0;
-        if (intra != null) {
-            if (intra.getMaStack() == MaStack.bullish) timing += 15;
-            if (intra.getRsiStatus() == Status.oversold) timing += 10;
-            if (intra.getStochStatus() == Status.oversold) timing += 8;
-            if (intra.getKeltnerEvent() == BandEvent.break_upper) timing += 10;
-            Double vz = intra.getVolumeZ();
-            if (vz != null && vz >= 1.5) timing += 5;
+
+        // =================================================================
+        // [1] 중장기 Context 점수 계산
+        // =================================================================
+        if (daily != null) {
+            if (tradeType == TradeType.BUY) {
+                if (daily.getMaStack() == MaStack.bullish) context += Optional.ofNullable(ctxW.maStack()).orElse(0);
+                if (daily.getObvSignal() == ObvSignal.bullish) context += Optional.ofNullable(ctxW.obvDivergence()).orElse(0);
+                if (daily.getStochStatus() == Status.oversold) context += Optional.ofNullable(ctxW.dailyStochReversal()).orElse(0);
+                if (daily.getRsiStatus() == Status.oversold) context += Optional.ofNullable(ctxW.dailyRsiReversal()).orElse(0);
+                if (daily.getBbEvent() == BandEvent.break_upper) context += Optional.ofNullable(ctxW.dailyBbBreakout()).orElse(0);
+            } else { // SELL
+                if (daily.getMaStack() == MaStack.bearish) context += Optional.ofNullable(ctxW.maStack()).orElse(0);
+                if (daily.getObvSignal() == ObvSignal.bearish) context += Optional.ofNullable(ctxW.obvDivergence()).orElse(0);
+                if (daily.getStochStatus() == Status.overbought) context += Optional.ofNullable(ctxW.dailyStochReversal()).orElse(0);
+                if (daily.getRsiStatus() == Status.overbought) context += Optional.ofNullable(ctxW.dailyRsiReversal()).orElse(0);
+                if (daily.getBbEvent() == BandEvent.break_lower) context += Optional.ofNullable(ctxW.dailyBbBreakout()).orElse(0);
+            }
+            if (daily.getRsiStatus() == Status.normal) context += Optional.ofNullable(ctxW.rsiNormal()).orElse(0);
+            if (daily.getAtrRegime() != AtrRegime.high) context += Optional.ofNullable(ctxW.atrNotHigh()).orElse(0);
+            if (daily.getAtrRegime() == AtrRegime.low) context += Optional.ofNullable(ctxW.atrLow()).orElse(0);
         }
+
+        // =================================================================
+        // [2] 단기 Timing 점수 계산
+        // =================================================================
+        if (intra != null) {
+            boolean volumeOk = intra.getVolumeZ() != null && intra.getVolumeZ() >= 1.5;
+
+            if (tradeType == TradeType.BUY) {
+                if (intra.getMaStack() == MaStack.bullish) timing += Optional.ofNullable(timW.maStack()).orElse(0);
+                if (intra.getStochStatus() == Status.oversold) timing += Optional.ofNullable(timW.stochReversal()).orElse(0);
+                if (intra.getRsiStatus() == Status.oversold) timing += Optional.ofNullable(timW.rsiReversal()).orElse(0);
+                if (intra.getKeltnerEvent() == BandEvent.break_upper) {
+                    timing += Optional.ofNullable(timW.keltnerBreakout()).orElse(0);
+                    if (volumeOk) timing += Optional.ofNullable(timW.keltnerAndVolumeBreakout()).orElse(0);
+                }
+            } else { // SELL
+                if (intra.getMaStack() == MaStack.bearish) timing += Optional.ofNullable(timW.maStack()).orElse(0);
+                if (intra.getStochStatus() == Status.overbought) timing += Optional.ofNullable(timW.stochReversal()).orElse(0);
+                if (intra.getRsiStatus() == Status.overbought) timing += Optional.ofNullable(timW.rsiReversal()).orElse(0);
+                if (intra.getKeltnerEvent() == BandEvent.break_lower) {
+                    timing += Optional.ofNullable(timW.keltnerBreakout()).orElse(0);
+                    if (volumeOk) timing += Optional.ofNullable(timW.keltnerAndVolumeBreakout()).orElse(0);
+                }
+            }
+            if (volumeOk) timing += Optional.ofNullable(timW.volumeSurge()).orElse(0);
+        }
+
         Integer total = context + timing;
 
         return ScoreMetrics.builder()
@@ -133,7 +183,7 @@ public class EvaluationService {
                 .rationale(0)
                 .risk(0)
                 .total(total)
-                .confidence(0.8)
+                .confidence(0.8) // confidence는 별도의 calculateConfidence 함수로 계산 가능
                 .build();
     }
 
