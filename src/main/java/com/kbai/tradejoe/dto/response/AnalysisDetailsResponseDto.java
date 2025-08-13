@@ -1,6 +1,8 @@
-package com.kbai.tradejoe.dto.response; // 패키지 경로는 맞게 수정해주세요.
+package com.kbai.tradejoe.dto.response;
 
 import com.kbai.tradejoe.domain.TradeEvaluation;
+import com.kbai.tradejoe.domain.embed.DailyContext;
+import com.kbai.tradejoe.domain.embed.IntradayTiming;
 
 public record AnalysisDetailsResponseDto(
         DailyAnalysis dailyContext,
@@ -18,20 +20,20 @@ public record AnalysisDetailsResponseDto(
 record DailyAnalysis(
         String trend,
         String maStack,
-        IndicatorDetail<Double> rsi,
-        IndicatorDetail<Double> stochastic,
+        IndicatorDetail rsi,
+        IndicatorDetail stochastic,
         String bollingerEvent,
         String obvSignal,
         String atrRegime,
         String keltnerEvent
 ) {
     static DailyAnalysis from(TradeEvaluation evaluation) {
-        var daily = evaluation.getDaily();
+        DailyContext daily = evaluation.getDaily();
         return new DailyAnalysis(
                 daily.getTrend().name(),
                 daily.getMaStack().name(),
-                new IndicatorDetail<>(daily.getRsi(), daily.getRsiStatus().name()),
-                new IndicatorDetail<>(daily.getStochK(), daily.getStochStatus().name()),
+                new IndicatorDetail(daily.getRsi(), daily.getRsiStatus().name()), // [수정] 제네릭 제거
+                new IndicatorDetail(daily.getStochK(), daily.getStochStatus().name()), // [수정] 제네릭 제거
                 daily.getBbEvent().name(),
                 daily.getObvSignal().name(),
                 daily.getAtrRegime().name(),
@@ -44,19 +46,19 @@ record DailyAnalysis(
 record IntradayAnalysis(
         String trend,
         String maStack,
-        IndicatorDetail<Double> rsi,
-        IndicatorDetail<Double> stochastic,
+        IndicatorDetail rsi,
+        IndicatorDetail stochastic,
         String bollingerEvent,
         Double volumeZScore,
         String keltnerEvent
 ) {
     static IntradayAnalysis from(TradeEvaluation evaluation) {
-        var intra = evaluation.getIntra();
+        IntradayTiming intra = evaluation.getIntra();
         return new IntradayAnalysis(
                 intra.getTrend().name(),
                 intra.getMaStack().name(),
-                new IndicatorDetail<>(intra.getRsi(), intra.getRsiStatus().name()),
-                new IndicatorDetail<>(intra.getStochK(), intra.getStochStatus().name()),
+                new IndicatorDetail(intra.getRsi(), intra.getRsiStatus().name()),
+                new IndicatorDetail(intra.getStochK(), intra.getStochStatus().name()),
                 intra.getBbEvent().name(),
                 intra.getVolumeZ(),
                 intra.getKeltnerEvent().name()
@@ -64,5 +66,4 @@ record IntradayAnalysis(
     }
 }
 
-// 지표 값과 상태를 함께 담는 제네릭 레코드
-record IndicatorDetail<T>(T value, String status) {}
+record IndicatorDetail(Double value, String status) {}
